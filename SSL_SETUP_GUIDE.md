@@ -1,70 +1,63 @@
-# 🔐 Automated SSL Certificate & Nginx Proxy Setup Guide
+# 🐧 Ubuntu Linux AWS VM Setup & Automated SSL Guide
 
-This guide explains how to set up a free **Let's Encrypt SSL Certificate** with **Nginx Reverse Proxy** on your AWS VM (Ubuntu/Debian/Amazon Linux) for the BingX Order Scheduler Backend.
-
----
-
-## 📋 Prerequisites
-
-1. **AWS EC2 Security Group Rules**:
-   Ensure inbound rules permit:
-   - **Port 80 (HTTP)**: `0.0.0.0/0` (Required for SSL validation & HTTP->HTTPS redirect)
-   - **Port 443 (HTTPS)**: `0.0.0.0/0` (Required for SSL traffic)
-   - **Port 22 (SSH)**: `0.0.0.0/0` or your IP
-
-2. **DNS A-Record**:
-   Point your domain or subdomain (e.g. `api.yourdomain.com`) to your AWS EC2 Public IP address.
+This guide details how to set up your fresh **Ubuntu Linux AWS EC2 VM** and configure a free **Let's Encrypt SSL Certificate** with **Nginx Reverse Proxy** for the BingX Order Scheduler Backend.
 
 ---
 
-## ⚡ Option 1: 1-Click Automated Script (Recommended for Linux/Ubuntu)
+## 📋 Step 1: AWS EC2 Security Group Prerequisites
 
-Run the automated script included in `scripts/setup-ssl.sh` directly on your AWS VM:
+In your AWS Management Console for your EC2 Instance, ensure your Security Group inbound rules allow:
+- **Port 80 (HTTP)**: `0.0.0.0/0` (Required for Certbot validation & HTTP -> HTTPS 301 redirect)
+- **Port 443 (HTTPS)**: `0.0.0.0/0` (Required for SSL traffic)
+- **Port 22 (SSH)**: `0.0.0.0/0` or your IP
+- **Port 8445**: `0.0.0.0/0` (Optional backend direct port)
+
+---
+
+## ⚡ Step 2: One-Time Ubuntu VM Setup Script
+
+On your fresh Ubuntu AWS VM, run the initial environment installer script:
 
 ```bash
-# 1. Navigate to backend project scripts directory
+# 1. Navigate to backend scripts folder
 cd ~/order-schedular-bingx-backend/scripts
 
-# 2. Make script executable
-chmod +x setup-ssl.sh
+# 2. Make scripts executable
+chmod +x setup-ubuntu-vm.sh setup-ssl-ubuntu.sh
 
-# 3. Run script with sudo
-sudo ./setup-ssl.sh
+# 3. Run initial Ubuntu environment setup
+sudo ./setup-ubuntu-vm.sh
 ```
 
-### What the script automatically does:
-1. Installs **Nginx**, **Certbot**, and `python3-certbot-nginx`.
-2. Generates an Nginx Reverse Proxy server block forwarding HTTPS traffic on port 443 to `http://127.0.0.1:8445` (with WebSocket & low-latency headers).
-3. Obtains free Let's Encrypt SSL certificate & enables auto-renewal.
-4. Configures HTTP -> HTTPS auto-redirection.
+### What `setup-ubuntu-vm.sh` installs automatically:
+- System updates & build tools (`git`, `curl`, `ufw`, `ca-certificates`)
+- **Node.js 20.x LTS** via NodeSource repository
+- **PM2 Process Manager** globally (configured to auto-start on VM reboot)
+- **Nginx Web Server** and **Certbot**
+- UFW Firewall rules for ports 22, 80, 443, 8445
 
 ---
 
-## 🪟 Option 2: 1-Click Automated Script for Windows Server VM
+## 🔐 Step 3: Automated SSL Certificate & Nginx Proxy Setup
 
-If your AWS VM runs **Windows Server**:
+After pointing your domain or subdomain DNS A-record (e.g., `api.yourdomain.com`) to your EC2 Public IP address, run:
 
-```powershell
-# Run PowerShell as Administrator
-cd C:\path\to\order-schedular-bingx-backend\scripts
-.\setup-ssl.ps1
+```bash
+sudo ./setup-ssl-ubuntu.sh
 ```
+
+### What `setup-ssl-ubuntu.sh` configures automatically:
+1. Creates Nginx Reverse Proxy block forwarding HTTPS traffic (`:443`) to local Node.js engine (`127.0.0.1:8445`).
+2. Configures WebSocket upgrade headers (`wss://`) and zero-buffering for low latency execution.
+3. Obtains Let's Encrypt SSL certificate & sets up automatic HTTP -> HTTPS redirect.
+4. Verifies automated SSL certificate renewal.
 
 ---
 
-## 🌐 Updating Frontend Connection Settings
+## 🌐 Updated Production Endpoints
 
-Once SSL is active on your domain (`api.yourdomain.com`):
+Once active, update your frontend configuration:
 
 - **HTTPS API Endpoint**: `https://api.yourdomain.com/api`
 - **WSS WebSocket Endpoint**: `wss://api.yourdomain.com`
-
----
-
-## 🔄 SSL Certificate Auto-Renewal Verification
-
-Certbot sets up a systemd timer / cron job automatically. You can test renewal anytime via:
-
-```bash
-sudo certbot renew --dry-run
-```
+- **Health Check**: `https://api.yourdomain.com/health`
