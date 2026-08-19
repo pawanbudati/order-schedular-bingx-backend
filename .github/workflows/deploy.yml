@@ -1,0 +1,62 @@
+name: Deploy Backend to AWS VM
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy to AWS VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript code
+        run: npm run build
+
+      - name: Copy deployment files to AWS VM via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USERNAME }}
+          key: ${{ secrets.AWS_VM_SSH_KEY }}
+          port: ${{ secrets.AWS_VM_PORT || 22 }}
+          source: "dist,package.json,package-lock.json,ecosystem.config.cjs"
+          target: "${{ secrets.AWS_VM_TARGET_DIR || '~/order-schedular-bingx-backend' }}"
+          strip_components: 0
+
+      - name: Install production dependencies & restart PM2 service on AWS VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USERNAME }}
+          key: ${{ secrets.AWS_VM_SSH_KEY }}
+          port: ${{ secrets.AWS_VM_PORT || 22 }}
+          script: |
+            TARGET_DIR="${{ secrets.AWS_VM_TARGET_DIR || '~/order-schedular-bingx-backend' }}"
+            eval TARGET_DIR=$TARGET_DIR
+            cd "$TARGET_DIR"
+
+            echo "📦 Installing production dependencies..."
+            npm ci --omit=dev
+
+            echo "🚀 Managing process execution..."
+            if command -v pm2 > /dev/null 2>&1; then
+              pm2 reload ecosystem.config.cjs || pm2 start ecosystem.config.cjs
+              pm2 save
+            else
+              echo "⚠️ PM2 not found globally. Installing PM2 or starting via background Node process..."
+              npx pm2 reload ecosystem.config.cjs || npx pm2 start ecosystem.config.cjs
+            fi
