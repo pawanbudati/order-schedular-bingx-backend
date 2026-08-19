@@ -52,7 +52,7 @@ class LocalJSONDatabase {
 
   // --- Passcode ---
   public getPasscode(): string {
-    return this.schema.passcode;
+    return process.env.ADMIN_PASSCODE || this.schema.passcode || '1234';
   }
 
   public setPasscode(newPasscode: string): void {
