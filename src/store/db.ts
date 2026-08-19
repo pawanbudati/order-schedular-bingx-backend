@@ -6,7 +6,6 @@ interface DatabaseSchema {
   accounts: BingXAccountConfig[];
   orders: ScheduledOrder[];
   logs: ExecutionLog[];
-  passcode: string;
 }
 
 const DB_FILE = path.resolve(process.cwd(), 'data.json');
@@ -16,7 +15,6 @@ class LocalJSONDatabase {
     accounts: [],
     orders: [],
     logs: [],
-    passcode: '1234',
   };
 
   constructor() {
@@ -32,7 +30,6 @@ class LocalJSONDatabase {
           accounts: data.accounts || [],
           orders: data.orders || [],
           logs: data.logs || [],
-          passcode: data.passcode || '1234',
         };
       } else {
         this.save();
@@ -50,14 +47,9 @@ class LocalJSONDatabase {
     }
   }
 
-  // --- Passcode ---
+  // --- Passcode (Purely from .env configuration) ---
   public getPasscode(): string {
-    return process.env.ADMIN_PASSCODE || this.schema.passcode || '1234';
-  }
-
-  public setPasscode(newPasscode: string): void {
-    this.schema.passcode = newPasscode;
-    this.save();
+    return process.env.ADMIN_PASSCODE || '1234';
   }
 
   // --- Accounts ---

@@ -11,12 +11,16 @@ const router = Router();
 router.get('/status', (req, res) => {
   const istTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
   const utcTime = new Date().toISOString();
+  const authExpiryHours = Number(process.env.AUTH_EXPIRY_HOURS) || 4;
+  const authExpiryMs = authExpiryHours * 60 * 60 * 1000;
 
   res.json({
     status: 'ok',
     timeIST: istTime,
     timeUTC: utcTime,
     timestamp: Date.now(),
+    authExpiryHours,
+    authExpiryMs,
     serverOffsetMs: bingxClient.getServerOffset(),
     rttMs: bingxClient.getRttMs(),
     activeTimersCount: schedulerEngine.getActiveTimersCount(),
@@ -28,9 +32,17 @@ router.get('/status', (req, res) => {
 router.post('/verify-passcode', (req, res) => {
   const { passcode } = req.body;
   const currentPasscode = db.getPasscode();
+  const authExpiryHours = Number(process.env.AUTH_EXPIRY_HOURS) || 4;
+  const authExpiryMs = authExpiryHours * 60 * 60 * 1000;
 
   if (passcode === currentPasscode) {
-    res.json({ success: true, message: 'Authentication successful' });
+    res.json({
+      success: true,
+      message: 'Authentication successful',
+      authExpiryHours,
+      authExpiryMs,
+      expiresAt: Date.now() + authExpiryMs,
+    });
   } else {
     res.status(401).json({ success: false, message: 'Invalid Admin Passcode' });
   }
