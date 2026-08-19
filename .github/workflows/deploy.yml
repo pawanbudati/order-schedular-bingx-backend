@@ -45,6 +45,7 @@ jobs:
           key: ${{ secrets.AWS_VM_SSH_KEY }}
           port: ${{ secrets.AWS_VM_PORT || 22 }}
           script: |
+            export PATH=$PATH:/usr/bin:/usr/local/bin:~/.nvm/versions/node/$(ls ~/.nvm/versions/node 2>/dev/null | tail -n 1)/bin
             TARGET_DIR="${{ secrets.AWS_VM_TARGET_DIR || '~/order-schedular-bingx-backend' }}"
             eval TARGET_DIR=$TARGET_DIR
             cd "$TARGET_DIR"
@@ -52,11 +53,11 @@ jobs:
             echo "📦 Installing production dependencies..."
             npm ci --omit=dev
 
-            echo "🚀 Managing process execution..."
+            echo "🚀 Reloading backend process via PM2..."
             if command -v pm2 > /dev/null 2>&1; then
               pm2 reload ecosystem.config.cjs || pm2 start ecosystem.config.cjs
               pm2 save
             else
-              echo "⚠️ PM2 not found globally. Installing PM2 or starting via background Node process..."
               npx pm2 reload ecosystem.config.cjs || npx pm2 start ecosystem.config.cjs
+              npx pm2 save
             fi
